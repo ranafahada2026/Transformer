@@ -7,7 +7,7 @@ This repository contains MATLAB code for a rhythm-aware transformer-based dialec
 Dataset Information
 SAAVB (Arabic)
 Dataset: Saudi Accented Arabic Voice Bank
-DOI/URL: [INSERT LINK HERE]
+DOI/URL: uploaded.
 TIMIT (English)
 Dataset: TIMIT Acoustic-Phonetic Continuous Speech Corpus
 URL: https://catalog.ldc.upenn.edu/LDC93S1
