@@ -45,11 +45,4 @@ Transformer-based classification
 Evaluation (segment-level and file-level)
 Reproducibility
 
-To reproduce results exactly, set:
-
-rng(42);
-Citations
-
-If used, please cite:
-[ paper citation]
 
