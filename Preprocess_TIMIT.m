@@ -3,6 +3,16 @@ clc
 close all
 % Specify the path for the Timit folder
 baseFolder = '.\Timit';
+% CHANGED: find the corpus folder automatically if it is not at this path
+if ~isfolder(fullfile(baseFolder, 'DR1'))
+    d = dir(fullfile('.', '**'));
+    d = d([d.isdir] & strcmpi({d.name}, 'DR1') & ~contains({d.folder}, '_sp'));
+    if isempty(d)
+        error('Folder "DR1" not found under %s. Put the corpus folder next to this script.', pwd);
+    end
+    baseFolder = d(1).folder;
+end
+fprintf('Corpus folder: %s\n', baseFolder);
 TimitFolder = '.\Timit_sp';
 if ~isfolder(TimitFolder), mkdir(TimitFolder); end
 
@@ -42,8 +52,9 @@ trainFileID = fopen(trainTsvFile, 'w');
 testFileID = fopen(testTsvFile, 'w');
 valFileID = fopen(valTsvFile, 'w');
 
-% Open Rythm Excel sheet for reading
-rhythm = readtable('Rythm Metric Featuers.xlsx','Sheet','TIMIT','Range','B1:I5');
+% CHANGED: rhythm metrics are no longer read from 'Rythm Metric Featuers.xlsx'
+% (per-dialect averages looked up with the label). They are computed below
+% for EACH file from its own .PHN segmentation by computeRhythmMetrics.m.
 
 % Write headers to TSV files
 fprintf(trainFileID, 'Audio_File\tdialect\tVper\tCper\tdV\tdC\n');
@@ -89,24 +100,24 @@ for i = 1:length(MainFolders)
                             srcPath = fullfile(folderPath, trainFiles{fileIdx});
                             destPath = fullfile(trainFolderType, [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' trainFiles{fileIdx}]);
                             copyfile(srcPath, destPath);
-                            rythmic = rhythm.(MainFolders(i).name) + 0.1 - 0.2*rand(4,1);
-                            fprintf(trainFileID, '%s\t%s\t%d\t%d\t%d\t%d\n', [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' trainFiles{fileIdx}],...
+                            rythmic = fileRhythmTIMIT(srcPath);   % CHANGED: from this file's own .PHN
+                            fprintf(trainFileID, '%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\n', [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' trainFiles{fileIdx}],...
                                 MainFolders(i).name, rythmic(1), rythmic(2), rythmic(3), rythmic(4));
                         end
                         for fileIdx = 1:numel(testFiles)
                             srcPath = fullfile(folderPath, testFiles{fileIdx});
                             destPath = fullfile(testFolderType, [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' testFiles{fileIdx}]);
                             copyfile(srcPath, destPath);
-                            rythmic = rhythm.(MainFolders(i).name) + 0.1 - 0.2*rand(4,1);
-                            fprintf(testFileID, '%s\t%s\t%d\t%d\t%d\t%d\n', [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' testFiles{fileIdx}],...
+                            rythmic = fileRhythmTIMIT(srcPath);   % CHANGED: from this file's own .PHN
+                            fprintf(testFileID, '%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\n', [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' testFiles{fileIdx}],...
                                 MainFolders(i).name, rythmic(1), rythmic(2), rythmic(3), rythmic(4));
                         end
                         for fileIdx = 1:numel(valFiles)
                             srcPath = fullfile(folderPath, valFiles{fileIdx});
                             destPath = fullfile(valFolderType, [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' valFiles{fileIdx}]);
                             copyfile(srcPath, destPath);
-                            rythmic = rhythm.(MainFolders(i).name) + 0.1 - 0.2*rand(4,1);
-                            fprintf(valFileID, '%s\t%s\t%d\t%d\t%d\t%d\n', [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' valFiles{fileIdx}],...
+                            rythmic = fileRhythmTIMIT(srcPath);   % CHANGED: from this file's own .PHN
+                            fprintf(valFileID, '%s\t%s\t%.6f\t%.6f\t%.6f\t%.6f\n', [num2str(i) '_' num2str(j) '_' num2str(fileIdx) '_' MainFolders(i).name '_' regionFolders(j).name '_' valFiles{fileIdx}],...
                                 MainFolders(i).name, rythmic(1), rythmic(2), rythmic(3), rythmic(4));
                         end
                     end
@@ -122,6 +133,16 @@ fclose(testFileID);
 fclose(valFileID);
 
 disp('Files have been organized into train, test, and validation folders, and audio file information has been recorded in separate TSV files.');
+
+% CHANGED: rhythm metrics of one TIMIT WAV file from the .PHN file with the
+% same name in the same folder (TIMIT .PHN times are samples at 16 kHz).
+function r = fileRhythmTIMIT(wavPath)
+    [folder, base] = fileparts(wavPath);
+    cand = dir(fullfile(folder, [base '.*']));
+    cand = cand(endsWith(lower({cand.name}), '.phn'));
+    if isempty(cand), error('No .PHN file found for %s', wavPath); end
+    r = computeRhythmMetrics(fullfile(cand(1).folder, cand(1).name), "TIMIT", 16000);
+end
 
 % Function to split files
 function [trainFiles, testFiles, valFiles] = splitFiles(files, trainRatio, testRatio)
